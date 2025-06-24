@@ -18,6 +18,44 @@
         </b-form-invalid-feedback>
       </b-form-group>
 
+      <!-- First Name -->
+      <b-form-group label="First Name" label-for="firstName">
+        <b-form-input
+          id="firstName"
+          v-model="state.firstName"
+          @blur="v$.firstName.$touch()"
+        />
+        <b-form-invalid-feedback v-if="v$.firstName.$error">
+          First name is required.
+        </b-form-invalid-feedback>
+      </b-form-group>
+
+      <!-- Last Name -->
+      <b-form-group label="Last Name" label-for="lastName">
+        <b-form-input
+          id="lastName"
+          v-model="state.lastName"
+          @blur="v$.lastName.$touch()"
+        />
+        <b-form-invalid-feedback v-if="v$.lastName.$error">
+          Last name is required.
+        </b-form-invalid-feedback>
+      </b-form-group>
+
+      <!-- Email -->
+      <b-form-group label="Email" label-for="email">
+        <b-form-input
+          id="email"
+          type="email"
+          v-model="state.email"
+          @blur="v$.email.$touch()"
+        />
+        <b-form-invalid-feedback v-if="v$.email.$error">
+          <div v-if="!v$.email.required">Email is required.</div>
+          <div v-else>Email must be valid.</div>
+        </b-form-invalid-feedback>
+      </b-form-group>
+
       <!-- Country -->
       <b-form-group label="Country" label-for="country">
         <b-form-select
@@ -44,6 +82,8 @@
           <div v-else-if="!v$.password.minLength || !v$.password.maxLength">
             Password must be 5–10 characters.
           </div>
+          <div v-else-if="!v$.password.hasNumber">Password must contain at least one number.</div>
+          <div v-else-if="!v$.password.hasSpecial">Password must contain at least one special character.</div>
         </b-form-invalid-feedback>
       </b-form-group>
 
@@ -84,16 +124,25 @@
 </template>
 
 <script>
-import { reactive } from 'vue';
+import { reactive, onMounted } from 'vue';
 import { useVuelidate } from '@vuelidate/core';
-import { required, minLength, maxLength, alpha, sameAs } from '@vuelidate/validators';
-import rawCountries from '../assets/countries';
+import { required, minLength, maxLength, alpha, sameAs, email as emailValidator } from '@vuelidate/validators';
+
+function hasNumber(value) {
+  return /[0-9]/.test(value);
+}
+function hasSpecial(value) {
+  return /[^A-Za-z0-9]/.test(value);
+}
 
 export default {
   name: 'RegisterPage',
   setup() {
     const state = reactive({
       username: '',
+      firstName: '',
+      lastName: '',
+      email: '',
       password: '',
       confirmedPassword: '',
       country: '',
@@ -107,11 +156,16 @@ export default {
         maxLength: maxLength(8),
         alpha,
       },
+      firstName: { required },
+      lastName: { required },
+      email: { required, email: emailValidator },
       country: { required },
       password: {
         required,
         minLength: minLength(5),
         maxLength: maxLength(10),
+        hasNumber,
+        hasSpecial,
       },
       confirmedPassword: {
         required,
@@ -121,6 +175,17 @@ export default {
 
     const v$ = useVuelidate(rules, state);
 
+    const countries = reactive(["Loading countries..."]);
+    onMounted(async () => {
+      try {
+        const res = await fetch('https://restcountries.com/v3.1/all');
+        const data = await res.json();
+        countries.splice(0, countries.length, 'Select a country', ...data.map(c => c.name.common).sort());
+      } catch (e) {
+        countries.splice(0, countries.length, 'Select a country');
+      }
+    });
+
     const register = async () => {
       const valid = await v$.value.$validate();
       if (!valid) return;
@@ -128,19 +193,28 @@ export default {
       try {
         await window.axios.post('/register', {
           username: state.username,
+          firstName: state.firstName,
+          lastName: state.lastName,
+          email: state.email,
           password: state.password,
           country: state.country,
         });
         window.toast('Registration successful', 'You can now login', 'success');
         window.router.push('/login');
       } catch (err) {
-        state.submitError = err.response?.data?.message || 'Unexpected error.';
+        if (err.response?.data?.message?.includes('username')) {
+          state.submitError = 'Username already exists. Please choose another.';
+        } else if (err.response?.data?.message?.includes('email')) {
+          state.submitError = 'Invalid or duplicate email.';
+        } else {
+          state.submitError = err.response?.data?.message || 'Unexpected error.';
+        }
       }
     };
 
     return {
       state,
-      countries: ['Select a country', ...rawCountries],
+      countries,
       register,
       v$,
     };

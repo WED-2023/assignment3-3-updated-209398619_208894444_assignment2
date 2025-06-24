@@ -14,6 +14,22 @@ const store = reactive({
     console.log("logout");
     localStorage.removeItem('username');
     this.username = undefined;
+  },
+
+  async checkSession() {
+    try {
+      const res = await fetch(this.server_domain + '/users/viewed-recipes', { credentials: 'include' });
+      if (res.status === 200) {
+        // If the session is valid, keep the username
+        return true;
+      } else {
+        this.logout();
+        return false;
+      }
+    } catch {
+      this.logout();
+      return false;
+    }
   }
 });
 

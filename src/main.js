@@ -11,9 +11,8 @@ import 'bootstrap/dist/js/bootstrap.bundle.js';
 // BootstrapVue 3
 import BootstrapVue3 from 'bootstrap-vue-3';
 import 'bootstrap-vue-3/dist/bootstrap-vue-3.css';
-import { BContainer, BRow, BCol } from 'bootstrap-vue-3';
 import Vuelidate from '@vuelidate/core';
-
+import { BNavbarText } from 'bootstrap-vue-3';
 
 // Router setup
 const router = createRouter({
@@ -48,12 +47,8 @@ const app = createApp(App);
 app.use(router);
 app.use(VueAxios, axios);
 app.use(BootstrapVue3);
-app.use(Vuelidate); 
-
-// Register global BootstrapVue3 components
-app.component('BContainer', BContainer);
-app.component('BRow', BRow);
-app.component('BCol', BCol);
+app.use(Vuelidate);
+app.component('b-navbar-text', BNavbarText);
 
 // Global store
 app.config.globalProperties.store = store;

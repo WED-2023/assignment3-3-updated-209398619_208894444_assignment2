@@ -27,7 +27,10 @@
         </b-form-invalid-feedback>
       </b-form-group>
 
-      <b-button type="submit" variant="primary" class="w-100">Login</b-button>
+      <b-button type="submit" variant="primary" class="w-100" :disabled="state.loading">
+        <span v-if="state.loading">Logging in...</span>
+        <span v-else>Login</span>
+      </b-button>
 
       <b-alert
         variant="danger"
@@ -40,7 +43,7 @@
       </b-alert>
 
       <div class="mt-2">
-        Don’t have an account?
+        Don't have an account?
         <router-link to="/register">Register here</router-link>
       </div>
     </b-form>
@@ -51,6 +54,9 @@
 import { reactive } from 'vue';
 import { useVuelidate } from '@vuelidate/core';
 import { required } from '@vuelidate/validators';
+import axios from 'axios';
+import { useRouter } from 'vue-router';
+import store from '../store';
 
 export default {
   name: 'LoginPage',
@@ -59,6 +65,7 @@ export default {
       username: '',
       password: '',
       submitError: null,
+      loading: false,
     });
 
     const rules = {
@@ -67,6 +74,7 @@ export default {
     };
 
     const v$ = useVuelidate(rules, state);
+    const router = useRouter();
 
     const getValidationState = (field) => {
       return field.$dirty ? !field.$invalid : null;
@@ -75,16 +83,27 @@ export default {
     const login = async () => {
       const valid = await v$.value.$validate();
       if (!valid) return;
-
+      state.submitError = null;
+      state.loading = true;
       try {
-        await window.axios.post('/login', {
+        await axios.post('http://localhost:3000/auth/login', {
           username: state.username,
           password: state.password,
-        });
-        window.store.login(state.username);
-        window.router.push('/main');
+        }, { withCredentials: true });
+        store.login(state.username);
+        router.push('/');
+        setTimeout(() => { window.location.reload(); }, 100);
       } catch (err) {
-        state.submitError = err.response?.data?.message || 'Unexpected error.';
+        const msg = err.response?.data?.message?.toLowerCase() || '';
+        if (msg.includes('no such user')) {
+          state.submitError = 'No such user found.';
+        } else if (msg.includes('wrong credentials') || msg.includes('incorrect') || msg.includes('invalid')) {
+          state.submitError = 'Wrong credentials (username/password).';
+        } else {
+          state.submitError = err.response?.data?.message || 'Unexpected error.';
+        }
+      } finally {
+        state.loading = false;
       }
     };
 
