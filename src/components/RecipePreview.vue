@@ -20,9 +20,9 @@
         {{ recipe.readyInMinutes }}
       </p>
       <div class="icons mb-2">
-        <span v-if="recipe.isVegan" class="icon vegan" title="Vegan">🍃🍃</span>
-        <span v-else-if="recipe.isVegetarian" class="icon vegetarian" title="Vegetarian">🍃</span>
-        <span v-if="recipe.glutenFree" class="icon gluten-free" title="Gluten Free"> <span class="gluten-free-text">Gluten Free</span> </span>
+        <span v-if="recipe.vegan || recipe.isVegan" class="icon vegan" title="Vegan">🍃🍃</span>
+        <span v-else-if="recipe.vegetarian || recipe.isVegetarian" class="icon vegetarian" title="Vegetarian">🍃</span>
+        <span v-if="recipe.glutenFree" class="icon gluten-free" title="Gluten Free"> <span class="gluten-free-text">GF</span> </span>
       </div>
       <div class="indicators mb-2">
         <span v-if="recipe.isViewed" class="viewed-indicator" title="Viewed">👁️</span>
@@ -50,24 +50,37 @@ export default {
   },
   methods: {
     goToRecipe() {
-      // Record view for logged-in users
-      const store = this.$root.store;
-      if (store && store.username) {
-        // Fetch the recipe details, which will trigger the backend to record the view
-        this.axios.get(`${store.server_domain}/recipes/${this.recipe.id}`, { withCredentials: true })
-          .then(() => {
-            this.$router.push({ name: 'recipe', params: { recipeId: this.recipe.id } });
-          })
-          .catch(() => {
-            this.$router.push({ name: 'notFound' });
-          });
-      } else {
-        this.$router.push({ name: 'recipe', params: { recipeId: this.recipe.id } });
-      }
+      // Just navigate to recipe page - let the recipe page handle view recording
+      this.$router.push({ name: 'recipe', params: { recipeId: this.recipe.id } });
     },
-    addToFavorites() {
-      // Placeholder: emit event or call API to add to favorites
-      this.$emit('add-to-favorites', this.recipe.id);
+    async addToFavorites() {
+      const store = this.$root.store;
+      if (!store || !store.username) {
+        // User not logged in - redirect to login
+        this.$router.push({ name: 'login' });
+        return;
+      }
+
+      try {
+        await this.axios.post(`${store.server_domain}/users/favorites`, 
+          { recipeId: this.recipe.id }, 
+          { withCredentials: true }
+        );
+        
+        // Emit success event for parent components to update the recipe
+        this.$emit('added-to-favorites', this.recipe.id);
+      } catch (error) {
+        console.error('Failed to add to favorites:', error);
+        // Handle specific error cases
+        if (error.response?.status === 409) {
+          // Already in favorites - emit event for parent to handle
+          this.$emit('added-to-favorites', this.recipe.id);
+        } else if (error.response?.status === 401) {
+          // Session expired
+          store.logout();
+          this.$router.push({ name: 'login' });
+        }
+      }
     }
   }
 }

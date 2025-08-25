@@ -1,4 +1,4 @@
-import { createApp, reactive } from 'vue';
+import { createApp } from 'vue';
 import App from './App.vue';
 import routes from './router/index';
 import axios from 'axios';
@@ -20,21 +20,8 @@ const router = createRouter({
   routes
 });
 
-// Shared store
-const store = reactive({
-  username: localStorage.getItem('username'),
-  server_domain: 'http://localhost:3000',
-  login(username) {
-    localStorage.setItem('username', username);
-    this.username = username;
-    console.log('login', this.username);
-  },
-  logout() {
-    console.log('logout');
-    localStorage.removeItem('username');
-    this.username = undefined;
-  },
-});
+// Import consolidated store
+import store from './store.js';
 
 // Axios interceptors
 axios.interceptors.request.use((config) => config, (error) => Promise.reject(error));

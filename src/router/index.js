@@ -47,6 +47,12 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: "/family-recipes",
+    name: "FamilyRecipes",
+    component: () => import("../pages/FamilyRecipesPage.vue"),
+    meta: { requiresAuth: true },
+  },
+  {
     path: "/:catchAll(.*)",
     name: "notFound",
     component: NotFound,

@@ -2,7 +2,9 @@ import { reactive } from 'vue';
 
 const store = reactive({
   username: localStorage.getItem('username'),
-  server_domain: "http://localhost:3000",
+  server_domain: process.env.NODE_ENV === 'production' 
+    ? "https://raznkeren.cs.bgu.ac.il" 
+    : "http://localhost:3000",
 
   login(username) {
     localStorage.setItem('username', username);
@@ -13,6 +15,8 @@ const store = reactive({
   logout() {
     console.log("logout");
     localStorage.removeItem('username');
+    // Clear any other cached data on logout
+    localStorage.removeItem('lastSearch');
     this.username = undefined;
   },
 

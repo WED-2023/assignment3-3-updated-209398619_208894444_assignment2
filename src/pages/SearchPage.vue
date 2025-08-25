@@ -70,7 +70,7 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted, computed } from 'vue';
+import { ref, reactive, onMounted, computed, getCurrentInstance } from 'vue';
 import axios from 'axios';
 import RecipePreview from '../components/RecipePreview.vue';
 
@@ -146,6 +146,9 @@ export default {
   name: 'SearchPage',
   components: { RecipePreview: RecipePreview },
   setup() {
+    const internalInstance = getCurrentInstance();
+    const store = internalInstance.appContext.config.globalProperties.store;
+    
     const form = reactive({
       query: '',
       number: 5,
@@ -171,7 +174,7 @@ export default {
     onMounted(async () => {
       // Fetch last search if logged in
       try {
-        const { data } = await axios.get('http://localhost:3000/users/last-search', { withCredentials: true });
+        const { data } = await axios.get(store.server_domain + '/users/last-search', { withCredentials: true });
         if (data.lastSearch && data.lastSearch.query) {
           lastSearch.value = data.lastSearch;
           form.query = data.lastSearch.query;
@@ -199,7 +202,7 @@ export default {
           diet: form.diet,
           intolerances: form.intolerance,
         };
-        const { data } = await axios.get('http://localhost:3000/recipes/search', { params, withCredentials: true });
+        const { data } = await axios.get(store.server_domain + '/recipes/search', { params, withCredentials: true });
         let fetched = data.recipes || [];
         // Client-side sort
         if (form.sort === 'popularity') {
@@ -216,6 +219,7 @@ export default {
     };
 
     return {
+      store,
       form,
       results,
       loading,

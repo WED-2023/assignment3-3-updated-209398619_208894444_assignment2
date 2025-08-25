@@ -7,7 +7,7 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, getCurrentInstance } from 'vue';
 import axios from 'axios';
 import RecipePreviewList from '../components/RecipePreviewList.vue';
 
@@ -15,12 +15,15 @@ export default {
   name: 'MyRecipesPage',
   components: { RecipePreviewList },
   setup() {
+    const internalInstance = getCurrentInstance();
+    const store = internalInstance.appContext.config.globalProperties.store;
     const recipes = ref([]);
     const error = ref(null);
+    
     onMounted(async () => {
       try {
-        const { data } = await axios.get('http://localhost:3000/users/recipes', { withCredentials: true });
-        recipes.value = data;
+        const { data } = await axios.get(store.server_domain + '/users/recipes', { withCredentials: true });
+        recipes.value = data.recipes || [];
       } catch (e) {
         error.value = e.response?.data?.message || 'Failed to load your recipes.';
       }

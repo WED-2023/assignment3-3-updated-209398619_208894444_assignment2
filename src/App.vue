@@ -7,11 +7,20 @@
           <b-nav-item to="/" tag="router-link">Main</b-nav-item>
           <b-nav-item to="/search" tag="router-link">Search</b-nav-item>
           <b-nav-item to="/about" tag="router-link">About</b-nav-item>
-          <b-nav-item-dropdown v-if="store.username" text="Personal" right>
-            <b-dropdown-item to="/favorites" tag="router-link">Favorites <span style="color:red">&#9829;</span></b-dropdown-item>
-            <b-dropdown-item to="/my-recipes" tag="router-link">Private</b-dropdown-item>
-            <b-dropdown-item to="/family-recipes" tag="router-link">La Familia</b-dropdown-item>
-          </b-nav-item-dropdown>
+          <li v-if="store.username" class="nav-item dropdown" :class="{ show: showPersonalDropdown }">
+            <a class="nav-link dropdown-toggle" 
+               href="#" 
+               role="button" 
+               @click.prevent="showPersonalDropdown = !showPersonalDropdown"
+               aria-expanded="false">
+              Personal
+            </a>
+            <ul class="dropdown-menu" :class="{ show: showPersonalDropdown }">
+              <li><a class="dropdown-item" href="#" @click.prevent="navigateToPersonal('/favorites')">Favorites <span style="color:red">♥</span></a></li>
+              <li><a class="dropdown-item" href="#" @click.prevent="navigateToPersonal('/my-recipes')">My Recipes</a></li>
+              <li><a class="dropdown-item" href="#" @click.prevent="navigateToPersonal('/family-recipes')">Family Recipes</a></li>
+            </ul>
+          </li>
           <b-nav-item v-if="store.username" @click="showCreateModal = true">Create a recipe</b-nav-item>
         </b-navbar-nav>
         <div class="flex-grow-1"></div>
@@ -82,6 +91,7 @@ export default {
     const router = internalInstance.appContext.config.globalProperties.$router;
 
     const showCreateModal = ref(false);
+    const showPersonalDropdown = ref(false);
     const submitError = ref(null);
     const submitSuccess = ref(false);
     const form = reactive({
@@ -119,14 +129,28 @@ export default {
       }
     };
 
-    const logout = () => {
+    const logout = async () => {
+      try {
+        await axios.post('http://localhost:3000/auth/logout', {}, { withCredentials: true });
+      } catch (e) {
+        console.warn('Logout API call failed:', e);
+      }
       store.logout();
+      showPersonalDropdown.value = false; // Close dropdown on logout
       if (toast) toast("Logout", "User logged out successfully", "success");
       if (router) router.push("/").catch(() => {});
-      else window.location.href = "/";
     };
 
-    return { store, logout, showCreateModal, form, submitRecipe, submitError, submitSuccess };
+    const navigateToPersonal = (route) => {
+      showPersonalDropdown.value = false; // Close dropdown after navigation
+      if (router) {
+        router.push(route).catch(() => {});
+      } else {
+        window.location.href = route;
+      }
+    };
+
+    return { store, logout, showCreateModal, showPersonalDropdown, navigateToPersonal, form, submitRecipe, submitError, submitSuccess };
   }
 }
 </script>
@@ -166,5 +190,23 @@ export default {
 }
 .mb-4 {
   margin-bottom: 2rem;
+}
+
+/* Dropdown fixes */
+.personal-dropdown .dropdown-menu {
+  z-index: 1050 !important;
+}
+
+.personal-dropdown .dropdown-toggle {
+  cursor: pointer;
+}
+
+.personal-dropdown .dropdown-toggle::after {
+  margin-left: 0.5rem;
+}
+
+/* Force dropdown to show when clicked */
+.dropdown.show .dropdown-menu {
+  display: block !important;
 }
 </style>

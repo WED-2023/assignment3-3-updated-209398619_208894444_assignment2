@@ -92,7 +92,6 @@ export default {
         }, { withCredentials: true });
         store.login(state.username);
         router.push('/');
-        setTimeout(() => { window.location.reload(); }, 100);
       } catch (err) {
         const msg = err.response?.data?.message?.toLowerCase() || '';
         if (msg.includes('no such user')) {
