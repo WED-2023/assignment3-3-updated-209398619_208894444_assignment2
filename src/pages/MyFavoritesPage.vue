@@ -1,6 +1,7 @@
 <template>
   <div class="container mt-5">
     <h2>My Favorites</h2>
+    <p class="text-muted mb-4" style="font-size: 1.1rem; font-weight: 300;">Your saved favorite recipes</p>
     <div v-if="loading" class="text-center">
       <b-spinner label="Loading favorites..."></b-spinner>
       <p class="mt-2">Loading your favorite recipes...</p>
@@ -8,7 +9,7 @@
     <div v-else-if="recipes.length === 0 && !error" class="text-center">
       <b-alert variant="info" show>No favorite recipes yet. Start favoriting recipes to see them here!</b-alert>
     </div>
-    <RecipePreviewList v-else :recipes="recipes" />
+    <RecipePreviewList v-else :recipes="recipes" :limit="recipes.length || 50" title="" />
     <b-alert v-if="error" variant="danger" show>{{ error }}</b-alert>
   </div>
 </template>
@@ -39,7 +40,7 @@ export default {
         console.log('Fetching fresh favorites data...');
         const { data } = await axios.get(store.server_domain + '/users/favorites', { withCredentials: true });
         console.log('Favorites data received:', data);
-        recipes.value = data.recipes || [];
+        recipes.value = (data.recipes || []).reverse();
       } catch (e) {
         console.error('Error fetching favorites:', e);
         error.value = e.response?.data?.message || 'Failed to load favorites.';

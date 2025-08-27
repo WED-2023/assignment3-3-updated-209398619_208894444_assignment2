@@ -1,7 +1,8 @@
 <template>
   <div class="container mt-5">
     <h2>My Recipes</h2>
-    <RecipePreviewList :recipes="recipes" />
+    <p class="text-muted mb-4" style="font-size: 1.1rem; font-weight: 300;">Recipes you've created</p>
+    <RecipePreviewList :recipes="recipes" :limit="recipes.length || 50" title="" />
     <b-alert v-if="error" variant="danger" show>{{ error }}</b-alert>
   </div>
 </template>

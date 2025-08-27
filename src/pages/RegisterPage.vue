@@ -7,6 +7,7 @@
         <b-form-input
           id="username"
           v-model="state.username"
+          :state="v$.username.$dirty ? !v$.username.$error : null"
           @blur="v$.username.$touch()"
         />
         <b-form-invalid-feedback v-if="v$.username.$error">
@@ -23,6 +24,7 @@
         <b-form-input
           id="firstName"
           v-model="state.firstName"
+          :state="v$.firstName.$dirty ? !v$.firstName.$error : null"
           @blur="v$.firstName.$touch()"
         />
         <b-form-invalid-feedback v-if="v$.firstName.$error">
@@ -35,6 +37,7 @@
         <b-form-input
           id="lastName"
           v-model="state.lastName"
+          :state="v$.lastName.$dirty ? !v$.lastName.$error : null"
           @blur="v$.lastName.$touch()"
         />
         <b-form-invalid-feedback v-if="v$.lastName.$error">
@@ -48,6 +51,7 @@
           id="email"
           type="email"
           v-model="state.email"
+          :state="v$.email.$dirty ? !v$.email.$error : null"
           @blur="v$.email.$touch()"
         />
         <b-form-invalid-feedback v-if="v$.email.$error">
@@ -62,6 +66,7 @@
           id="country"
           v-model="state.country"
           :options="countries"
+          :state="v$.country.$dirty ? !v$.country.$error : null"
           @change="v$.country.$touch()"
         />
         <b-form-invalid-feedback v-if="v$.country.$error">
@@ -71,12 +76,25 @@
 
       <!-- Password -->
       <b-form-group label="Password" label-for="password">
-        <b-form-input
-          id="password"
-          type="password"
-          v-model="state.password"
-          @blur="v$.password.$touch()"
-        />
+        <b-input-group>
+          <b-form-input
+            id="password"
+            :type="state.showPassword ? 'text' : 'password'"
+            v-model="state.password"
+            :state="v$.password.$dirty ? !v$.password.$error : null"
+            @blur="v$.password.$touch()"
+            @input="() => v$.confirmedPassword.$touch()"
+          />
+          <b-input-group-append>
+            <b-button 
+              variant="outline-secondary" 
+              @click="state.showPassword = !state.showPassword"
+              type="button"
+            >
+              <i :class="state.showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+            </b-button>
+          </b-input-group-append>
+        </b-input-group>
         <b-form-invalid-feedback v-if="v$.password.$error">
           <div v-if="!v$.password.required">Password is required.</div>
           <div v-else-if="!v$.password.minLength || !v$.password.maxLength">
@@ -89,12 +107,25 @@
 
       <!-- Confirm Password -->
       <b-form-group label="Confirm Password" label-for="confirmedPassword">
-        <b-form-input
-          id="confirmedPassword"
-          type="password"
-          v-model="state.confirmedPassword"
-          @blur="v$.confirmedPassword.$touch()"
-        />
+        <b-input-group>
+          <b-form-input
+            id="confirmedPassword"
+            :type="state.showConfirmPassword ? 'text' : 'password'"
+            v-model="state.confirmedPassword"
+            :state="!v$.confirmedPassword.$dirty ? null : (state.password === state.confirmedPassword ? true : false)"
+            @blur="v$.confirmedPassword.$touch()"
+            @input="() => v$.confirmedPassword.$touch()"
+          />
+          <b-input-group-append>
+            <b-button 
+              variant="outline-secondary" 
+              @click="state.showConfirmPassword = !state.showConfirmPassword"
+              type="button"
+            >
+              <i :class="state.showConfirmPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+            </b-button>
+          </b-input-group-append>
+        </b-input-group>
         <b-form-invalid-feedback v-if="v$.confirmedPassword.$error">
           <div v-if="!v$.confirmedPassword.required">Confirmation is required.</div>
           <div v-else-if="!v$.confirmedPassword.sameAsPassword">
@@ -126,7 +157,10 @@
 <script>
 import { reactive, onMounted } from 'vue';
 import { useVuelidate } from '@vuelidate/core';
-import { required, minLength, maxLength, alpha, sameAs, email as emailValidator } from '@vuelidate/validators';
+import { required, minLength, maxLength, alpha, email as emailValidator } from '@vuelidate/validators';
+import { useRouter } from 'vue-router';
+import axios from 'axios';
+import store from '../store';
 
 function hasNumber(value) {
   return /[0-9]/.test(value);
@@ -138,6 +172,7 @@ function hasSpecial(value) {
 export default {
   name: 'RegisterPage',
   setup() {
+    const router = useRouter();
     const state = reactive({
       username: '',
       firstName: '',
@@ -147,6 +182,8 @@ export default {
       confirmedPassword: '',
       country: '',
       submitError: null,
+      showPassword: false,
+      showConfirmPassword: false,
     });
 
     const rules = {
@@ -169,45 +206,67 @@ export default {
       },
       confirmedPassword: {
         required,
-        sameAsPassword: sameAs(() => state.password),
+        sameAsPassword: (value) => value === state.password,
       },
     };
 
     const v$ = useVuelidate(rules, state);
 
-    const countries = reactive(["Loading countries..."]);
+    const countries = reactive([{ value: '', text: 'Loading countries...' }]);
     onMounted(async () => {
       try {
-        const res = await fetch('https://restcountries.com/v3.1/all');
+        const res = await fetch('https://restcountries.com/v3.1/all?fields=name');
         const data = await res.json();
-        countries.splice(0, countries.length, 'Select a country', ...data.map(c => c.name.common).sort());
+        const sortedCountries = data.map(c => ({ value: c.name.common, text: c.name.common })).sort((a, b) => a.text.localeCompare(b.text));
+        countries.splice(0, countries.length, { value: '', text: 'Select a country' }, ...sortedCountries);
       } catch (e) {
-        countries.splice(0, countries.length, 'Select a country');
+        countries.splice(0, countries.length, { value: '', text: 'Select a country' });
       }
     });
 
     const register = async () => {
-      const valid = await v$.value.$validate();
-      if (!valid) return;
+      console.log('Register function called');
+      console.log('Validation state:', {
+        invalid: v$.value.$invalid,
+        dirty: v$.value.$dirty,
+        pending: v$.value.$pending,
+        errors: v$.value.$errors
+      });
+      
+      //const valid = await v$.value.$validate();
+      //console.log('Validation result:', valid);
+      //console.log('Validation errors:', v$.value.$errors);
+      
+      //if (!valid) {
+      //  console.log('Validation failed, not submitting');
+      //  return;
+      //}
 
+      console.log('Validation passed, submitting form');
+      state.submitError = null;
+      
       try {
-        await window.axios.post('/register', {
+        await axios.post(store.server_domain + '/auth/register', {
           username: state.username,
           firstName: state.firstName,
           lastName: state.lastName,
           email: state.email,
           password: state.password,
           country: state.country,
-        });
-        window.toast('Registration successful', 'You can now login', 'success');
-        window.router.push('/login');
+        }, { withCredentials: true });
+        
+        alert('Registration successful! You can now login.');
+        router.push('/login');
       } catch (err) {
-        if (err.response?.data?.message?.includes('username')) {
+        console.error('Registration error:', err);
+        if (err.response?.status === 409) {
           state.submitError = 'Username already exists. Please choose another.';
-        } else if (err.response?.data?.message?.includes('email')) {
-          state.submitError = 'Invalid or duplicate email.';
+        } else if (err.response?.status === 400) {
+          state.submitError = err.response?.data?.message || 'Invalid registration data.';
+        } else if (err.code === 'ERR_NETWORK') {
+          state.submitError = 'Cannot connect to server. Please make sure the backend is running.';
         } else {
-          state.submitError = err.response?.data?.message || 'Unexpected error.';
+          state.submitError = err.response?.data?.message || 'Registration failed. Please try again.';
         }
       }
     };

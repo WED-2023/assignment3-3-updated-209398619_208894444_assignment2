@@ -3,7 +3,7 @@
     <h3>{{ title }}</h3>
     
     <div class="row">
-      <div class="col" v-for="r in recipesToShow" :key="r.id">
+      <div class="col-lg-4 col-md-6 col-12 mb-4" v-for="r in recipesToShow" :key="r.id">
         <RecipePreview class="recipePreview" :recipe="r" />
       </div>
     </div>
